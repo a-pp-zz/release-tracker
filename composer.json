@@ -1,0 +1,28 @@
+{
+    "name": "appzz/release-tracker",
+    "description": "Release tracker from nnm/rutracker/soap4me",
+    "type": "library",
+    "keywords": [
+        "rutracker",
+        "nnmclub",
+        "soap4me"
+    ],
+    "homepage": "https://github.com/a-pp-zz/release-tracker",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "CoolSwitcher",
+            "email": "ds@appzz.pw",
+            "role": "lead"
+        }
+    ],
+    "require": {
+        "php": ">=5.4",
+        "appzz/arr": "1.*",
+        "appzz/curl-client": "2.*",
+        "simple-crud/simple-crud": "6.*"
+    },
+    "autoload": {
+        "psr-4": {"AppZz\\Http\\RT\\": "src/"}
+    }
+}
