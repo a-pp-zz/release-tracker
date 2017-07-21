@@ -20,7 +20,8 @@
         "php": ">=5.4",
         "appzz/arr": "1.*",
         "appzz/curl-client": "2.*",
-        "simple-crud/simple-crud": "6.*"
+        "simple-crud/simple-crud": "6.*",
+        "phpmailer/phpmailer": "5.*"
     },
     "autoload": {
         "psr-4": {"AppZz\\Http\\RT\\": "src/"}
