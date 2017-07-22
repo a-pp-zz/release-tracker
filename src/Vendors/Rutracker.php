@@ -20,7 +20,7 @@ class Rutracker extends Tracker implements TrackerInterface {
 
 		$header = Arr::get ($body, 'title');
 		$update = Arr::get ($body, 'updated');
-		$items = Arr::get ($body, 'entry');
+		$items = (array) Arr::get ($body, 'entry');
 
 		if ($update) {
 			$dt = new \DateTime ($update, $this->_tz);

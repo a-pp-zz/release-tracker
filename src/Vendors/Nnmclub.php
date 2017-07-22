@@ -20,7 +20,7 @@ class Nnmclub extends Tracker implements TrackerInterface {
 
 		$header = Arr::path ($body, 'channel.title');
 		$update = Arr::path ($body, 'channel.lastBuildDate');
-		$items = Arr::path ($body, 'channel.item');
+		$items = (array) Arr::path ($body, 'channel.item');
 
 		if ($update) {
 			$dt = new \DateTime ($update, $this->_tz);
