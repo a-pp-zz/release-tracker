@@ -15,20 +15,28 @@ class Tracker {
 	protected $_posts;
 	protected $_data;
 	protected $_update;
-	protected $_vendor;
 	protected $_tz;
 
 	public static $db_path = './data/rt.sqlite';
 	public static $proxy;
+	
 	public static $types = [
-		'music'   => 'Музыка',
-		'tvshows' => 'Сериалы',
-		'movies'  => 'Фильмы',
+		'music'    => 'Музыка',
+		'tvshows'  => 'Сериалы',
+		'movies'   => 'Фильмы',
+		'cartoons' => 'Мультфильмы',
+	];
+
+	public static $patterns = [
+		'music'    => NULL,
+		'tvshows'  => '#.*(720|1080)p?.*#iu',
+		'movies'   => '#.*(720|1080)p?.*#iu',
+		'cartoons' => '#.*(720|1080)p?.*#iu',	
 	];
 
 	const TZ = 'Europe/Moscow';
 
-	public function __construct ()
+	public function __construct ($tracker_id = NULL)
 	{
 		if ( ! $this->_db) {
 			$dsn = 'sqlite:' . Tracker::$db_path;
@@ -36,13 +44,47 @@ class Tracker {
 			$this->_db = new SimpleCrud($pdo);	
 			$this->_tz = new DateTimeZone (Tracker::TZ);
 		}	
+
+		if ($tracker_id AND ! $this->_tracker) {
+			$this->_tracker = $this->_get_tracker($tracker_id);	
+			$this->_posts = (array) $this->_get_data(-1, 'post_id');
+		}		
+	}
+
+	public function rutracker ($tracker_id)
+	{
+		return new Vendors\Rutracker ($tracker_id);
+	}
+
+	public function nnmclub ($tracker_id)
+	{
+		return new Vendors\Nnmclub ($tracker_id);
+	}	
+
+	public function sync ()
+	{
+		$trackers = $this->_db->trackers
+		    ->select()
+		    //->orderBy('type ASC')
+		    ->run();  
+
+		foreach ($trackers as $tracker) {
+			$vendor = $this->_get_vendor($tracker->feed);
+			$vendor = strtolower ($vendor);
+
+			$vnd = $this->$vendor ($tracker->id);
+			$pattern = Arr::get(Tracker::$patterns, $tracker->type);
+
+			$vnd->get ($pattern);
+			$vnd->save ();
+		}    		
 	}
 
 	public function notification (array $params = [])
 	{
 		$trackers = $this->_db->trackers
 		    ->select()
-		    ->orderBy('type ASC')
+		    ->orderBy('type DESC')
 		    ->run();  
 
 		$message = '';
@@ -51,7 +93,7 @@ class Tracker {
 
 		foreach ($trackers as $tracker) {
 			$this->_tracker = $tracker;
-			$data = $this->_get_data();
+			$data = $this->_get_data(0);
 			unset ($this->_tracker);    
 
 			if ($data->count()) {
@@ -100,12 +142,10 @@ class Tracker {
 			if ( ! $mail->send()) {
 			    $this->_error ($mail->ErrorInfo);
 			} else {
-				/*
 				$this->_db->data->update()
 							->data(['notify'=>1])
 							->by('id', $ids)
-							->run();				
-				*/							
+							->run();										
 			}					
 		}					
 
@@ -152,6 +192,9 @@ class Tracker {
 
 	protected function _request ()
 	{
+		if ( ! $this->_tracker)
+			return FALSE;
+		
 		$request = CurlClient::get($this->_tracker->feed)
 					->agent('chrome');					
 		

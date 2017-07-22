@@ -1,44 +1,22 @@
 <?php
 namespace AppZz\Http\RT\Vendors;
 use AppZz\Http\RT\Tracker;
-use AppZz\Http\RT\Interfaces\Media;
+use AppZz\Http\RT\TrackerInterface;
 use AppZz\Helpers\Arr;
 
-class Nnmclub extends Tracker implements Media {
-
-	protected $_vendor = 'Nnmclub';
+class Nnmclub extends Tracker implements TrackerInterface {
 
 	public function __construct ($tracker_id)
 	{
-		parent::__construct ();
-		$this->_tracker = $this->_get_tracker($tracker_id);	
-		$this->_posts = (array) $this->_get_data(-1, 'post_id');
+		parent::__construct ($tracker_id);
 	}
 
-	public function get_tvshows ($pattern = NULL)
-	{
-		return $this->_get ($pattern);
-	}	
-
-	public function get_movies ($pattern = NULL)
-	{
-		return $this->_get ($pattern);
-	}
-	
-	public function get_music ($pattern = NULL)
-	{
-
-	}
-
-	private function _get ($pattern = NULL)
+	public function get ($pattern = NULL)
 	{
 		$body = $this->_request ();
 		
 		if ( ! $body)
 			return FALSE;
-
-		if ( ! $pattern)
-			$pattern = '#720p|1080p#iu';
 
 		$header = Arr::path ($body, 'channel.title');
 		$update = Arr::path ($body, 'channel.lastBuildDate');
@@ -63,7 +41,7 @@ class Nnmclub extends Tracker implements Media {
 				$title = array_pop ($title_parts);
 			}
 
-			if ( ! preg_match ($pattern, $title)) {
+			if ($pattern AND ! preg_match ($pattern, $title)) {
 				continue;			
 			}
 
