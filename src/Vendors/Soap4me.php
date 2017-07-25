@@ -85,7 +85,7 @@ class Soap4me extends Tracker implements TrackerInterface {
 	{
 		if ($this->_data) {
 
-			$tr = new TransmissionRemote (Arr::get(Tracker::$transmission, 'host'), Arr::get(Tracker::$transmission, 'port'), TRUE);			
+			$tr = new TransmissionRemote (Arr::get(Tracker::$transmission, 'host'), Arr::get(Tracker::$transmission, 'port'), Arr::get(Tracker::$transmission, 'secure', FALSE));			
 			$tr->auth(Arr::get(Tracker::$transmission, 'username'), Arr::get(Tracker::$transmission, 'password'));
 			$tr->status();
 
