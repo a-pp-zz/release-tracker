@@ -18,7 +18,14 @@ class Tracker {
 	protected $_tz;
 
 	public static $db_path = './data/rt.sqlite';
+	public static $tvshows_path = '/media/uploads/TV Shows';
 	public static $proxy;
+	public static $soap4me_days = 7;
+	
+	public static $transmission = [
+		'host' => 'localhost',
+		'port' => 9091,
+	];
 	
 	public static $types = [
 		'music'    => 'Музыка',
@@ -59,13 +66,17 @@ class Tracker {
 	public function nnmclub ($tracker_id)
 	{
 		return new Vendors\Nnmclub ($tracker_id);
-	}	
+	}
+
+	public function soap4me ($tracker_id)
+	{
+		return new Vendors\Soap4me ($tracker_id, Tracker::$soap4me_days);
+	}		
 
 	public function sync ()
 	{
 		$trackers = $this->_db->trackers
 		    ->select()
-		    //->orderBy('type ASC')
 		    ->run();  
 
 		foreach ($trackers as $tracker) {
@@ -76,6 +87,11 @@ class Tracker {
 			$pattern = Arr::get(Tracker::$patterns, $tracker->type);
 
 			$vnd->get ($pattern);
+
+			if ($vendor == 'soap4me') {
+				$vnd->add_torrents();
+			}
+
 			$vnd->save ();
 		}    		
 	}
@@ -182,6 +198,7 @@ class Tracker {
 
 		if ($this->_data) {
 			foreach ($this->_data as $data) {
+				$data = array_map('trim', $data);
 				$this->_db->data
 				    ->insert()
 				    ->data($data)
