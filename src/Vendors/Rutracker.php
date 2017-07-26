@@ -2,6 +2,7 @@
 namespace AppZz\Http\RT\Vendors;
 use AppZz\Http\RT\Tracker;
 use AppZz\Http\RT\TrackerInterface;
+use AppZz\Http\RT\EntitiesDecode;
 use AppZz\Helpers\Arr;
 
 class Rutracker extends Tracker implements TrackerInterface {

@@ -41,7 +41,8 @@ class Tracker {
 		'cartoons' => '#.*(720|1080)p?.*#iu',	
 	];
 
-	const TZ = 'Europe/Moscow';
+	const TZ                  = 'Europe/Moscow';
+	const ITUNES_API_ENDPOINT = 'https://itunes.apple.com/search/';
 
 	public function __construct ($tracker_id = NULL)
 	{
@@ -75,7 +76,7 @@ class Tracker {
 
 	public function sync ()
 	{
-		$trackers = $this->_db->trackers
+		$trackers = $this->_db->tracker
 		    ->select()
 		    ->run();  
 
@@ -98,7 +99,7 @@ class Tracker {
 
 	public function notification (array $params = [])
 	{
-		$trackers = $this->_db->trackers
+		$trackers = $this->_db->tracker
 		    ->select()
 		    ->orderBy('type DESC')
 		    ->run();  
@@ -124,7 +125,15 @@ class Tracker {
 				$message .= sprintf ('<h3>%s // %s</h3>', $tracker->title, $vendor);
 
 				foreach ($data as $d) {
-					$message .= sprintf ('<p><a target="_blank" href="%s">%s</a></p>', $d->url, $d->title);
+
+					$message .= sprintf ('<p><a target="_blank" href="%s">%s</a>', $d->url, $d->title);
+
+					if ( !empty ($d->itunes) AND $d->itunes != -1) {
+						$message .= sprintf ('<a target="_blank" href="%s"><strong> - iTunes</strong></a>', $d->itunes);
+					}
+
+					$message .= '</p>';
+
 					$ids[] = $d->id;
 				}
 			}    
@@ -176,7 +185,7 @@ class Tracker {
 			return FALSE;
 		}
 
-		return $this->_db->trackers
+		return $this->_db->tracker
 		    ->insert()
 		    ->data([
 		        'title' => Arr::get($data, 'title'),
@@ -189,7 +198,7 @@ class Tracker {
 	public function save ()
 	{
 		if ($this->_update) {
-			$this->_db->trackers->update()
+			$this->_db->tracker->update()
 						->data(['update'=>$this->_update])
 						->where('id = :id', [':id' => $this->_tracker->id])
 						->limit(1)
@@ -199,6 +208,16 @@ class Tracker {
 		if ($this->_data) {
 			foreach ($this->_data as $data) {
 				$data = array_map('trim', $data);
+
+				if (isset($data['title'])) {
+					$data['title'] = html_entity_decode ($data['title'], ENT_COMPAT | ENT_HTML401, 'UTF-8');
+
+					if ($this->_tracker AND $this->_tracker->type == 'music') {
+						$data['itunes'] = Tracker::get_itunes_url ($data['title']);
+						usleep(500);
+					}					
+				}
+
 				$this->_db->data
 				    ->insert()
 				    ->data($data)
@@ -206,6 +225,127 @@ class Tracker {
 			}
 		}
 	}
+
+	public static function update_itunes_url ()
+	{		
+		$rt = new Tracker;
+
+		$result = $rt->_db->data
+		    ->select()
+		    ->leftJoin('tracker', 'tracker.id = data.tracker_id')
+			->where('tracker.type = :type', [':type' => 'music'])
+			->where('data.itunes IS NULL')
+			->run();	
+
+		$total = $result->count();    
+		$num = 0;
+		foreach ($result as $row) {
+			$num++;
+			echo "### {$num} / {$total} ###", PHP_EOL;
+			$url = Tracker::get_itunes_url ($row->title);
+
+			if ($url) {
+				$row->itunes = $url;
+				$row->save();
+			}
+
+			usleep (500);
+		}     
+
+		/*   
+
+		$data = $this->_get_data(-1);
+		$total = $data->count();
+		$num = 0;
+		foreach ($data as $row) {
+			if ( !empty ($row->meta))
+				continue;
+			$num++;
+			$meta = Tracker::get_music_metadata ($row->title);
+			echo "### {$row->id}, {$num} // {$total} ";
+			if ($meta) {
+				$meta = serialize($meta);
+				$this->_db->data->update()
+							->data(['meta'=>$meta, 'notify'=>0])
+							->where('id = :id', [':id' => $row->id])
+							->limit(1)
+							->run();		
+				echo "- OK";					
+			} else {
+				echo "- FAIL";
+			}
+
+			echo " ###", PHP_EOL;
+		}
+		*/
+	}
+
+	public static function get_itunes_url ($text)
+	{
+		$clean_pat = '#(\s+)?[\(\[\,]{1}(\s+)?$#iu';
+		$descr_pat = '#\(.*(cd|disk|disc|remaster|demo).*\)#iu';
+		//$genre_pat = '#(\((?<genre>[\w\s\.\,\-\/\:\!]+)\))\s?(?<title>.*)#iu';
+		$genre_pat = '#(\((?<genre>[^\)\(]+)\)\)?)\s?(?<title>.*)#iu';
+		$year_pat = '#(?<title>.*)(?<year>\d{4}).*#iu';
+		$years_pat = '#(?<title>.*)(?<year>\d{4}.*\d{4})#iu';
+
+		$artist = $album = $genre = $year = $url = NULL;
+
+		$text = preg_replace ('#\[(Обновлено|WEB|CD|CDS)\]\s?#iu', '', $text);
+		$text = html_entity_decode ($text, ENT_COMPAT | ENT_HTML401, 'UTF-8');
+
+		$p1 = preg_match($years_pat, $text, $parts);
+
+		if ( ! $p1)
+			$p2 = preg_match($year_pat, $text, $parts);
+
+		$parts = (array) $parts;
+
+		$year = Arr::get ($parts, 'year');
+		$title = Arr::get ($parts, 'title');
+
+		$title = preg_replace ($clean_pat, '', $title);
+
+		if (preg_match($genre_pat, $title, $parts)) {
+			$genre = Arr::get ($parts, 'genre');
+			$title = Arr::get ($parts, 'title');
+
+			$title_parts = explode (' - ', $title);
+			
+			if ($title_parts) {
+				$title_parts = array_map ('trim', $title_parts);
+				$artist = Arr::get($title_parts, 0);
+				$album = Arr::get($title_parts, 1);
+			}
+		}
+
+		//print_r ($parts);
+		
+		$album  = preg_replace ($descr_pat, '', $album);
+		$album  = preg_replace ($clean_pat, '', $album);		
+		
+		$artist = trim ($artist);
+		$album  = trim ($album);
+		$genre  = trim ($genre);
+		$year   = trim ($year);
+
+		/*
+		$meta = [
+			'artist' => $artist,
+			'album'  => $album,
+			'genre'  => $genre,
+			'year'   => $year,
+		];
+		*/
+	
+		if ($artist) {
+			$urls = Tracker::_itunes_api_request ($artist, 'musicArtist');	
+			return !empty ($urls) ? $urls->artist_url : FALSE;
+			//$meta['url'] = $urls->artist_url;				
+		}	
+
+		return FALSE;
+	}	
 
 	protected function _request ()
 	{
@@ -230,6 +370,58 @@ class Tracker {
 		return FALSE;
 	}	
 
+	protected static function _itunes_api_request ($text, $entity = 'album')
+	{
+		$ret = new \stdClass;
+		$ret->artist_url = $ret->album_url = NULL;
+
+		$params = [
+			'term'     => $text,
+			'country'  => 'ru',
+			'media'    => 'music',
+			'explicit' => 'Yes',
+			'entity'   => $entity,
+			'limit'    => 1,
+		];
+
+		$request = CurlClient::get(Tracker::ITUNES_API_ENDPOINT, $params)
+					->agent('chrome')
+					->accept('gzip', 'application/json');
+
+		$response = $request->send();
+
+		if ($response === 200) {			
+			$body = $request->get_body();
+			$body = json_decode($body, TRUE);
+
+			if (json_last_error() === JSON_ERROR_NONE) {
+
+				$total = Arr::get ($body, 'resultCount', 0);
+				$results = Arr::get ($body, 'results', 0);
+
+				if ($total === 0)
+					return FALSE;
+
+				$results = array_shift($results);
+
+				if ($entity == 'album') {
+					$ret->artist_url = Arr::get($results, 'artistViewUrl');
+					$ret->album_url = Arr::get($results, 'collectionViewUrl');
+				} else {
+					$ret->artist_url = Arr::get($results, 'artistLinkUrl');
+				}
+
+				return $ret; 
+			}
+
+			return FALSE;
+		} else {
+			$ret->artist_url = $ret->album_url = -1;
+		}
+
+		return FALSE;
+	}
+
 	protected function _get_vendor ($url)
 	{
 		$host = parse_url ($url, PHP_URL_HOST);
@@ -251,7 +443,7 @@ class Tracker {
 
 	protected function _get_tracker ($value = 0)
 	{
-		$result = $this->_db->trackers
+		$result = $this->_db->tracker
 		    ->select()
 		    ->one();
 
