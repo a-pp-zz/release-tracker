@@ -20,6 +20,7 @@
         "php": ">=5.4",
         "appzz/arr": "1.*",
         "appzz/curl-client": "2.*",
+        "appzz/transmission-rpc": "1.*",
         "simple-crud/simple-crud": "6.*",
         "phpmailer/phpmailer": "^5.0"
     },

@@ -2,7 +2,7 @@
 namespace AppZz\Http\RT\Vendors;
 use AppZz\Http\RT\Tracker;
 use AppZz\Http\RT\TrackerInterface;
-use AppZz\Http\RT\TransmissionRemote;
+use AppZz\Http\TransmissionRPC;
 use AppZz\Helpers\Arr;
 
 class Soap4me extends Tracker implements TrackerInterface {
@@ -85,15 +85,14 @@ class Soap4me extends Tracker implements TrackerInterface {
 	{
 		if ($this->_data) {
 
-			$tr = new TransmissionRemote (Arr::get(Tracker::$transmission, 'host'), Arr::get(Tracker::$transmission, 'port'), Arr::get(Tracker::$transmission, 'secure', FALSE));			
+			$tr = new TransmissionRPC (Tracker::$transmission);			
 			$tr->auth(Arr::get(Tracker::$transmission, 'username'), Arr::get(Tracker::$transmission, 'password'));
-			$tr->status();
 
 			foreach ($this->_data as $data) {
 				$title_parts = explode ('/', $data['title']);
 				if ($title_parts) {
 					$title_parts = array_shift($title_parts);
-					$tr->add ($data['url'], trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $title_parts));
+					$tr->add_file ($data['url'], trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $title_parts));
 				}
 			}
 		}
