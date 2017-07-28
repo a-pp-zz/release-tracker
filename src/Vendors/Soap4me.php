@@ -92,7 +92,7 @@ class Soap4me extends Tracker implements TrackerInterface {
 				$title_parts = explode ('/', $data['title']);
 				if ($title_parts) {
 					$title_parts = array_shift($title_parts);
-					$tr->add_file ($data['url'], trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $title_parts));
+					$add = $tr->add_file ($data['url'], trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $title_parts));
 				}
 			}
 		}
