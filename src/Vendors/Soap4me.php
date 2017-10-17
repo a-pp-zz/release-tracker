@@ -15,8 +15,8 @@ class Soap4me extends Tracker implements TrackerInterface {
 
 		if ($days)
 			$this->_days = $days;
-	}		
-	
+	}
+
 	public function get ($pattern = NULL)
 	{
 		$body = $this->_request ();
@@ -28,7 +28,7 @@ class Soap4me extends Tracker implements TrackerInterface {
 		$times = [];
 
 		foreach ($items as $item) {
-			
+
 			$title = Arr::get($item, 'title');
 			$link = Arr::get($item, 'link');
 			$time = Arr::get($item, 'pubDate');
@@ -37,15 +37,15 @@ class Soap4me extends Tracker implements TrackerInterface {
 			if ($link) {
 				$post_id = (int) pathinfo($link, PATHINFO_FILENAME);
 			}
-			
+
 			if (in_array($post_id, $this->_posts)) {
-				continue;		
+				continue;
 			}
 
 			if (preg_match('#(.*)\s+?\/\s+?сезон\s+?(\d+)\s+?#iu', $title, $title_parts)) {
-				
+
 				$days = $this->_get_days ($title_parts[1], $title_parts[2]);
-				
+
 				if ( ! $days)
 					continue;
 
@@ -56,12 +56,12 @@ class Soap4me extends Tracker implements TrackerInterface {
 			$dt = new \DateTime (NULL, $this->_tz);
 			$dt->modify('-' . $days . ' day');
 			$start = $dt->getTimestamp();
-			unset ($dt); 			
+			unset ($dt);
 
 			$dt = new \DateTime ($time, $this->_tz);
 			$time = $dt->getTimestamp();
 
-			if ($time < $start)	
+			if ($time < $start)
 				continue;
 
 			$times[] = $time;
@@ -81,19 +81,23 @@ class Soap4me extends Tracker implements TrackerInterface {
 		}
 	}
 
-	public function add_torrents () 
+	public function add_torrents ()
 	{
 		if ($this->_data) {
 
-			$tr = new TransmissionRPC (Tracker::$transmission);			
-			$tr->auth(Arr::get(Tracker::$transmission, 'username'), Arr::get(Tracker::$transmission, 'password'));
+			try {
+				$tr = new TransmissionRPC (Tracker::$transmission);
+				$tr->auth(Arr::get(Tracker::$transmission, 'username'), Arr::get(Tracker::$transmission, 'password'));
 
-			foreach ($this->_data as $data) {
-				$title_parts = explode ('/', $data['title']);
-				if ($title_parts) {
-					$title_parts = array_shift($title_parts);
-					$add = $tr->add_file ($data['url'], trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $title_parts));
+				foreach ($this->_data as $data) {
+					$title_parts = explode ('/', $data['title']);
+					if ($title_parts) {
+						$title_parts = array_shift($title_parts);
+						$add = $tr->add_file ($data['url'], trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $title_parts));
+					}
 				}
+			} catch (\Exception $e) {
+
 			}
 		}
 	}
@@ -107,7 +111,7 @@ class Soap4me extends Tracker implements TrackerInterface {
 		    ->where('season = :season', [':season' => trim ($season)])
 		    //->where('status = :status', [':status' => 1])
 		    ->run();
-		
+
 		if ($result) {
 			return $result->status == 0 ? FALSE : $result->days;
 		} else {
