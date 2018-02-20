@@ -9,7 +9,7 @@ use DateTime;
 use PHPMailer;
 
 class Tracker {
-	
+
 	protected $_db;
 	protected $_tracker;
 	protected $_posts;
@@ -21,12 +21,12 @@ class Tracker {
 	public static $tvshows_path = '/media/uploads/TV Shows';
 	public static $proxy;
 	public static $soap4me_days = 7;
-	
+
 	public static $transmission = [
 		'host' => 'localhost',
 		'port' => 9091,
 	];
-	
+
 	public static $types = [
 		'music'    => 'Музыка',
 		'tvshows'  => 'Сериалы',
@@ -38,7 +38,7 @@ class Tracker {
 		'music'    => NULL,
 		'tvshows'  => '#.*(720|1080)p?.*#iu',
 		'movies'   => '#.*(720|1080)p?.*#iu',
-		'cartoons' => '#.*(720|1080)p?.*#iu',	
+		'cartoons' => '#.*(720|1080)p?.*#iu',
 	];
 
 	const TZ                  = 'Europe/Moscow';
@@ -49,14 +49,14 @@ class Tracker {
 		if ( ! $this->_db) {
 			$dsn = 'sqlite:' . Tracker::$db_path;
 			$pdo = new PDO($dsn);
-			$this->_db = new SimpleCrud($pdo);	
+			$this->_db = new SimpleCrud($pdo);
 			$this->_tz = new DateTimeZone (Tracker::TZ);
-		}	
+		}
 
 		if ($tracker_id AND ! $this->_tracker) {
-			$this->_tracker = $this->_get_tracker($tracker_id);	
+			$this->_tracker = $this->_get_tracker($tracker_id);
 			$this->_posts = (array) $this->_get_data(-1, 'post_id');
-		}		
+		}
 	}
 
 	public function rutracker ($tracker_id)
@@ -72,13 +72,13 @@ class Tracker {
 	public function soap4me ($tracker_id)
 	{
 		return new Vendors\Soap4me ($tracker_id, Tracker::$soap4me_days);
-	}		
+	}
 
 	public function sync ()
 	{
 		$trackers = $this->_db->tracker
 		    ->select()
-		    ->run();  
+		    ->run();
 
 		foreach ($trackers as $tracker) {
 			$vendor = $this->_get_vendor($tracker->feed);
@@ -94,7 +94,7 @@ class Tracker {
 			}
 
 			$vnd->save ();
-		}    		
+		}
 	}
 
 	public function notification (array $params = [])
@@ -102,7 +102,7 @@ class Tracker {
 		$trackers = $this->_db->tracker
 		    ->select()
 		    ->orderBy('type DESC')
-		    ->run();  
+		    ->run();
 
 		$message = '';
 		$type = NULL;
@@ -111,16 +111,16 @@ class Tracker {
 		foreach ($trackers as $tracker) {
 			$this->_tracker = $tracker;
 			$data = $this->_get_data(0);
-			unset ($this->_tracker);    
+			unset ($this->_tracker);
 
 			if ($data->count()) {
 
 				$vendor = $this->_get_vendor($tracker->feed);
-				
+
 				if ($type != $tracker->type) {
 					$type = $tracker->type;
 					$message .= sprintf ('<h2>%s</h2>', Arr::get(Tracker::$types, $tracker->type, $tracker->type));
-				}				
+				}
 
 				$message .= sprintf ('<h3>%s // %s</h3>', $tracker->title, $vendor);
 
@@ -136,8 +136,8 @@ class Tracker {
 
 					$ids[] = $d->id;
 				}
-			}    
-		}	
+			}
+		}
 
 		if ( ! empty ($message)) {
 			$mail = new PHPMailer;
@@ -152,15 +152,15 @@ class Tracker {
 				$mail->Username = Arr::get($smtp, 'username');
 				$mail->Password = Arr::get($smtp, 'password');
 				$mail->SMTPSecure = 'tls';
-				$mail->Port = Arr::get($smtp, 'port');				
-			}	
+				$mail->Port = Arr::get($smtp, 'port');
+			}
 
 			$mail->From = Arr::get($params, 'from');
 			$mail->FromName = Arr::get($params, 'from_name');
 			$mail->addAddress(Arr::get($params, 'to'));
 			$mail->isHTML(true);
 
-			$mail->Subject = 'New Releases @ ' . date ('d.m.Y H:i:s'); 
+			$mail->Subject = 'New Releases @ ' . date ('d.m.Y H:i:s');
 			$mail->Body    = $message;
 			$mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
 
@@ -170,15 +170,15 @@ class Tracker {
 				$this->_db->data->update()
 							->data(['notify'=>1])
 							->by('id', $ids)
-							->run();										
-			}					
-		}					
+							->run();
+			}
+		}
 
-		return $message;  		      		    
+		return $message;
 	}
 
 	public function register (array $data = [])
-	{		
+	{
 		$exists = $this->_get_tracker (Arr::get($data, 'feed'));
 
 		if ($exists) {
@@ -202,7 +202,7 @@ class Tracker {
 						->data(['update'=>$this->_update])
 						->where('id = :id', [':id' => $this->_tracker->id])
 						->limit(1)
-						->run();	
+						->run();
 		}
 
 		if ($this->_data) {
@@ -215,19 +215,19 @@ class Tracker {
 					if ($this->_tracker AND $this->_tracker->type == 'music') {
 						$data['itunes'] = Tracker::get_itunes_url ($data['title']);
 						usleep(500);
-					}					
+					}
 				}
 
 				$this->_db->data
 				    ->insert()
 				    ->data($data)
-				    ->run(); 				
+				    ->run();
 			}
 		}
 	}
 
 	public static function update_itunes_url ()
-	{		
+	{
 		$rt = new Tracker;
 
 		$result = $rt->_db->data
@@ -235,9 +235,9 @@ class Tracker {
 		    ->leftJoin('tracker', 'tracker.id = data.tracker_id')
 			->where('tracker.type = :type', [':type' => 'music'])
 			->where('data.itunes IS NULL')
-			->run();	
+			->run();
 
-		$total = $result->count();    
+		$total = $result->count();
 		$num = 0;
 		foreach ($result as $row) {
 			$num++;
@@ -250,9 +250,9 @@ class Tracker {
 			}
 
 			usleep (500);
-		}     
+		}
 
-		/*   
+		/*
 
 		$data = $this->_get_data(-1);
 		$total = $data->count();
@@ -269,8 +269,8 @@ class Tracker {
 							->data(['meta'=>$meta, 'notify'=>0])
 							->where('id = :id', [':id' => $row->id])
 							->limit(1)
-							->run();		
-				echo "- OK";					
+							->run();
+				echo "- OK";
 			} else {
 				echo "- FAIL";
 			}
@@ -311,7 +311,7 @@ class Tracker {
 			$title = Arr::get ($parts, 'title');
 
 			$title_parts = explode (' - ', $title);
-			
+
 			if ($title_parts) {
 				$title_parts = array_map ('trim', $title_parts);
 				$artist = Arr::get($title_parts, 0);
@@ -320,10 +320,10 @@ class Tracker {
 		}
 
 		//print_r ($parts);
-		
+
 		$album  = preg_replace ($descr_pat, '', $album);
-		$album  = preg_replace ($clean_pat, '', $album);		
-		
+		$album  = preg_replace ($clean_pat, '', $album);
+
 		$artist = trim ($artist);
 		$album  = trim ($album);
 		$genre  = trim ($genre);
@@ -337,38 +337,38 @@ class Tracker {
 			'year'   => $year,
 		];
 		*/
-	
+
 		if ($artist) {
-			$urls = Tracker::_itunes_api_request ($artist, 'musicArtist');	
+			$urls = Tracker::_itunes_api_request ($artist, 'musicArtist');
 			return !empty ($urls) ? $urls->artist_url : FALSE;
-			//$meta['url'] = $urls->artist_url;				
-		}	
+			//$meta['url'] = $urls->artist_url;
+		}
 
 		return FALSE;
-	}	
+	}
 
 	protected function _request ()
 	{
 		if ( ! $this->_tracker)
 			return FALSE;
-		
+
 		$request = CurlClient::get($this->_tracker->feed)
-					->agent('chrome');					
-		
+					->agent('chrome');
+
 		if ( ! empty (Tracker::$proxy)) {
 			$request->proxy(Tracker::$proxy);
 		} else {
 			$request->accept('gzip');
-		}					
-		
-		$response = $request->send();		
+		}
+
+		$response = $request->send();
 
 		if ($response === 200) {
 			return $request->get_body();
 		}
 
 		return FALSE;
-	}	
+	}
 
 	protected static function _itunes_api_request ($text, $entity = 'album')
 	{
@@ -390,7 +390,7 @@ class Tracker {
 
 		$response = $request->send();
 
-		if ($response === 200) {			
+		if ($response === 200) {
 			$body = $request->get_body();
 			$body = json_decode($body, TRUE);
 
@@ -411,7 +411,7 @@ class Tracker {
 					$ret->artist_url = Arr::get($results, 'artistLinkUrl');
 				}
 
-				return $ret; 
+				return $ret;
 			}
 
 			return FALSE;
@@ -436,9 +436,9 @@ class Tracker {
 			return 'Nnmclub';
 
 		if (strpos($host, 'soap4') !== FALSE)
-			return 'Soap4me';	
+			return 'Soap4me';
 
-		return 'unknown';								
+		return 'unknown';
 	}
 
 	protected function _get_tracker ($value = 0)
@@ -451,12 +451,12 @@ class Tracker {
 			$result->where('id = :id', [':id' => $value]);
 		} else {
 			$value = rtrim ($value, '/');
-			$result->where('feed = :feed', [':feed' => $value]);		    
+			$result->where('feed = :feed', [':feed' => $value]);
 		}
 
 		$result = $result->run();
-		return $result;  		
-	}	
+		return $result;
+	}
 
 	protected function _get_data ($notify = -1, $field = NULL)
 	{
@@ -467,8 +467,8 @@ class Tracker {
 
 		if ($notify >= 0) {
 			$result->where('notify = :n', [':n'=>$notify]);
-		}    
-		    
+		}
+
 		$result = $result->orderBy('time ASC')->run();
 
 		if ($field) {
@@ -481,10 +481,10 @@ class Tracker {
 		}
 
 		return $result;
-	}			
+	}
 
-	protected function _error ($message, $code = 0) 
+	protected function _error ($message, $code = 0)
 	{
 		throw new \Exception ($message, $code);
-	}	
+	}
 }
