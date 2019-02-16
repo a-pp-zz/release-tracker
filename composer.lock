@@ -1,0 +1,263 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "dc0b22983b46135477f8afa6ccc6d2d9",
+    "packages": [
+        {
+            "name": "appzz/arr",
+            "version": "1.0.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/a-pp-zz/arr.git",
+                "reference": "aac336ac0ad7febf0b4179c8e7a2ee12c2a8058a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/a-pp-zz/arr/zipball/aac336ac0ad7febf0b4179c8e7a2ee12c2a8058a",
+                "reference": "aac336ac0ad7febf0b4179c8e7a2ee12c2a8058a",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "AppZz\\Helpers\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CoolSwitcher",
+                    "email": "ds@appzz.pw",
+                    "role": "lead"
+                }
+            ],
+            "description": "A safe way to get values from arrays",
+            "homepage": "https://github.com/a-pp-zz/arr",
+            "keywords": [
+                "arr",
+                "array"
+            ],
+            "time": "2017-05-07T21:19:52+00:00"
+        },
+        {
+            "name": "appzz/curl-client",
+            "version": "3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/a-pp-zz/curl-client.git",
+                "reference": "c680533d47ae8f5a61f294d27b80c0415ddeed78"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/a-pp-zz/curl-client/zipball/c680533d47ae8f5a61f294d27b80c0415ddeed78",
+                "reference": "c680533d47ae8f5a61f294d27b80c0415ddeed78",
+                "shasum": ""
+            },
+            "require": {
+                "appzz/arr": "1.*",
+                "php": ">=5.6"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "AppZz\\Http\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CoolSwitcher",
+                    "email": "ds@appzz.pw",
+                    "role": "lead"
+                }
+            ],
+            "description": "Lightweight curl-client",
+            "homepage": "https://github.com/a-pp-zz/curl-client",
+            "keywords": [
+                "curl",
+                "curl-client"
+            ],
+            "time": "2019-02-15T14:01:31+00:00"
+        },
+        {
+            "name": "appzz/transmission-rpc",
+            "version": "1.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/a-pp-zz/TransmissionRPC.git",
+                "reference": "f7a793d755e062fdb1af4e1895c46df439782f11"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/a-pp-zz/TransmissionRPC/zipball/f7a793d755e062fdb1af4e1895c46df439782f11",
+                "reference": "f7a793d755e062fdb1af4e1895c46df439782f11",
+                "shasum": ""
+            },
+            "require": {
+                "appzz/arr": "1.*",
+                "appzz/curl-client": "3.*",
+                "php": ">=5.6"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "AppZz\\Http\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CoolSwitcher",
+                    "email": "ds@appzz.pw",
+                    "role": "lead"
+                }
+            ],
+            "description": "Transmission RPC Client",
+            "homepage": "https://github.com/a-pp-zz/TransmissionRPC",
+            "keywords": [
+                "rpc",
+                "transmission"
+            ],
+            "time": "2019-02-15T13:49:06+00:00"
+        },
+        {
+            "name": "phpmailer/phpmailer",
+            "version": "v6.0.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHPMailer/PHPMailer.git",
+                "reference": "0c41a36d4508d470e376498c1c0c527aa36a2d59"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PHPMailer/PHPMailer/zipball/0c41a36d4508d470e376498c1c0c527aa36a2d59",
+                "reference": "0c41a36d4508d470e376498c1c0c527aa36a2d59",
+                "shasum": ""
+            },
+            "require": {
+                "ext-ctype": "*",
+                "ext-filter": "*",
+                "php": ">=5.5.0"
+            },
+            "require-dev": {
+                "doctrine/annotations": "1.2.*",
+                "friendsofphp/php-cs-fixer": "^2.2",
+                "phpdocumentor/phpdocumentor": "2.*",
+                "phpunit/phpunit": "^4.8 || ^5.7",
+                "zendframework/zend-eventmanager": "3.0.*",
+                "zendframework/zend-i18n": "2.7.3",
+                "zendframework/zend-serializer": "2.7.*"
+            },
+            "suggest": {
+                "ext-mbstring": "Needed to send email in multibyte encoding charset",
+                "hayageek/oauth2-yahoo": "Needed for Yahoo XOAUTH2 authentication",
+                "league/oauth2-google": "Needed for Google XOAUTH2 authentication",
+                "psr/log": "For optional PSR-3 debug logging",
+                "stevenmaguire/oauth2-microsoft": "Needed for Microsoft XOAUTH2 authentication",
+                "symfony/polyfill-mbstring": "To support UTF-8 if the Mbstring PHP extension is not enabled (^1.2)"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPMailer\\PHPMailer\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1"
+            ],
+            "authors": [
+                {
+                    "name": "Jim Jagielski",
+                    "email": "jimjag@gmail.com"
+                },
+                {
+                    "name": "Marcus Bointon",
+                    "email": "phpmailer@synchromedia.co.uk"
+                },
+                {
+                    "name": "Andy Prevost",
+                    "email": "codeworxtech@users.sourceforge.net"
+                },
+                {
+                    "name": "Brent R. Matzelle"
+                }
+            ],
+            "description": "PHPMailer is a full-featured email creation and transfer class for PHP",
+            "time": "2019-02-01T15:04:28+00:00"
+        },
+        {
+            "name": "simple-crud/simple-crud",
+            "version": "v6.13.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/oscarotero/simple-crud.git",
+                "reference": "2655840fb057af51f855aa4a2a19993cd5f4c9b1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/oscarotero/simple-crud/zipball/2655840fb057af51f855aa4a2a19993cd5f4c9b1",
+                "reference": "2655840fb057af51f855aa4a2a19993cd5f4c9b1",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^4.8 || ^5.5",
+                "zendframework/zend-diactoros": "^1.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "SimpleCrud\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Oscar Otero",
+                    "email": "oom@oscarotero.com",
+                    "homepage": "http://oscarotero.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Create/Read/Update/Delete easily",
+            "homepage": "https://github.com/oscarotero/simple-crud",
+            "keywords": [
+                "crud",
+                "mysql",
+                "sqlite"
+            ],
+            "time": "2019-02-01T15:24:31+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=7.0"
+    },
+    "platform-dev": []
+}
