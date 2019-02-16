@@ -69,7 +69,7 @@ class Soap4me extends Tracker implements TrackerInterface {
 			$this->_data[] = [
 				'tracker_id' => $this->_tracker->id,
 				'post_id'    => $post_id,
-				'time'       => $time,
+				'time'       => date ('Y-m-d H:i:s', $time),
 				'title'      => $title,
 				'url'        => $link,
 				'notify'     => 0
@@ -77,7 +77,7 @@ class Soap4me extends Tracker implements TrackerInterface {
 		}
 
 		if ($times) {
-			$this->_update = max ($times);
+			$this->_update = date ('Y-m-d H:i:s', max ($times));
 		}
 	}
 

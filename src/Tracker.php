@@ -6,7 +6,7 @@ use SimpleCrud\SimpleCrud;
 use PDO;
 use DateTimeZone;
 use DateTime;
-use PHPMailer;
+use PHPMailer\PHPMailer\PHPMailer;
 
 class Tracker {
 
@@ -17,7 +17,7 @@ class Tracker {
 	protected $_update;
 	protected $_tz;
 
-	public static $db_path = './data/rt.sqlite';
+	public static $db = [];
 	public static $tvshows_path = '/media/uploads/TV Shows';
 	public static $proxy;
 	public static $soap4me_days = 7;
@@ -47,8 +47,7 @@ class Tracker {
 	public function __construct ($tracker_id = NULL)
 	{
 		if ( ! $this->_db) {
-			$dsn = 'sqlite:' . Tracker::$db_path;
-			$pdo = new PDO($dsn);
+			$pdo = new PDO (Tracker::$db['dsn'], Tracker::$db['username'], Tracker::$db['password']);
 			$this->_db = new SimpleCrud($pdo);
 			$this->_tz = new DateTimeZone (Tracker::TZ);
 		}
@@ -97,93 +96,78 @@ class Tracker {
 		}
 	}
 
-    public function notification ($telegram = [])
+    public function notification_telegram ($options = [])
     {
         $trackers = $this->_db->tracker
             ->select()
             ->orderBy('type DESC')
             ->run();
 
-        $message_tg = '';
-        $type = NULL;
-        $ids = [];
-
-        $tg_sended = FALSE;
+        $max_items = Arr::get ($options, 'max_items', 10);
 
         foreach ($trackers as $tracker) {
             $this->_tracker = $tracker;
-            $data = $this->_get_data(0);
+            $data = $this->_get_data(0, NULL, $max_items);
             unset ($this->_tracker);
 
-            if ($data->count()) {
+            $total = $data->count();
+
+            if ($total) {
 
                 $vendor = $this->_get_vendor($tracker->feed);
 
-                if ($type != $tracker->type) {
-                    $type = $tracker->type;
-                    $message_tg .= sprintf ('<b>%s</b>', Arr::get(Tracker::$types, $tracker->type, $tracker->type)) . "\n\n";
-                }
-
-                $message_tg .= sprintf ('<em>%s // %s</em>', $tracker->title, $vendor) . "\n\n";
+                $message = sprintf ('<b>%s</b>', Arr::get(Tracker::$types, $tracker->type, $tracker->type)) . "\n\n";
+                $message .= sprintf ('<em>%s // %s</em>', $tracker->title, $vendor) . "\n\n";
+                $ids     = [];
+                $sended  = FALSE;
 
                 foreach ($data as $d) {
 
-                    $message_tg .= sprintf ('<a target="_blank" href="%s">%s</a>', $d->url, $d->title);
+                    $message .= sprintf ('<a target="_blank" href="%s">%s</a>', $d->url, $d->title);
 
                     if ( !empty ($d->itunes) AND $d->itunes != -1) {
-                        $message_tg .= "\n" . sprintf ('iTunes: <a target="_blank" href="%s">%s</a>', $d->itunes, $d->itunes);
+                        $message .= "\n" . sprintf ('iTunes: <a target="_blank" href="%s">%s</a>', $d->itunes, $d->itunes);
                     } else {
-                        $message_tg .= "\n\n";
+                        $message .= "\n\n";
                     }
 
                     $ids[] = $d->id;
                 }
 
-                $message_tg .="\n";
+                $message .="\n";
+            }
+
+            $message = rtrim ($message, "\n");
+
+            if ( ! empty ($message) AND ! empty ($options)) {
+                $status = NULL;
+                $url = sprintf ('https://api.telegram.org/bot%s/sendMessage', Arr::get ($options, 'token'));
+                $response = $this->_request (['url'=>$url, 'params'=>['chat_id'=>Arr::get ($options, 'chat_id'), 'parse_mode'=>'HTML', 'text'=>$message], 'json'=>TRUE, 'proxy'=>TRUE], $status);
+
+                if ($status !== 200) {
+                    $error_msg = sprintf ('%d: %s', Arr::get ($response, 'error_code', 0), Arr::get ($response, 'description', 'Unknown error'));
+                    $this->_error ($error_msg);
+                } else {
+                    $sended = TRUE;
+                }
+            }
+
+            if ($ids AND $sended) {
+                $this->_db->data->update()
+                            ->data(['notify'=>1])
+                            ->by('id', $ids)
+                            ->run();
             }
         }
 
-        $message_tg = rtrim ($message_tg, "\n");
-
-        if ( ! empty ($message_tg) AND ! empty ($telegram)) {
-            $url = sprintf ('https://api.telegram.org/bot%s/sendMessage', Arr::get ($telegram, 'token'));
-            $request = CurlClient::get($url, ['chat_id'=>Arr::get ($telegram, 'chat_id'), 'parse_mode'=>'HTML', 'text'=>$message_tg])
-                ->agent('chrome')
-                ->accept('json', 'gzip');
-
-            if ( ! empty (Tracker::$proxy) AND is_array (Tracker::$proxy)) {
-                $proxy_host               = Arr::get (Tracker::$proxy, 'host');
-                $proxy_params             = [];
-                $proxy_params['port']     = Arr::get (Tracker::$proxy, 'port', 1080);
-                $proxy_params['type']     = Arr::get (Tracker::$proxy, 'type', 'http');
-                $proxy_params['username'] = Arr::get (Tracker::$proxy, 'username');
-                $proxy_params['password'] = Arr::get (Tracker::$proxy, 'password');
-                $request->proxy($proxy_host, $proxy_params);
-            }
-
-            $response = $request->send();
-
-            if ($response !== 200) {
-                $body = $request->get_body();
-                $error_msg = sprintf ('%d: %s', Arr::get ($body, 'error_code', 0), Arr::get ($body, 'description', 'Unknown error'));
-                $this->_error ($error_msg);
-            } else {
-                $tg_sended = TRUE;
-            }
+        if ($total > $max_items) {
+            $this->notification_telegram ($options);
         }
 
-        if ($ids AND $tg_sended) {
-            $this->_db->data->update()
-                        ->data(['notify'=>1])
-                        ->by('id', $ids)
-                        ->run();
-        }
-
-        return $message_tg;
+        return TRUE;
     }
 
-    /*
-    public function notification (array $params = [], $telegram = [])
+    public function notification_email (array $params = [])
     {
         $trackers = $this->_db->tracker
             ->select()
@@ -191,11 +175,10 @@ class Tracker {
             ->run();
 
         $message = '';
-        $message_tg = '';
         $type = NULL;
         $ids = [];
 
-        $email_sended = $tg_sended = FALSE;
+        $sended = FALSE;
 
         foreach ($trackers as $tracker) {
             $this->_tracker = $tracker;
@@ -209,34 +192,24 @@ class Tracker {
                 if ($type != $tracker->type) {
                     $type = $tracker->type;
                     $message .= sprintf ('<h2>%s</h2>', Arr::get(Tracker::$types, $tracker->type, $tracker->type));
-                    $message_tg .= sprintf ('<b>%s</b>', Arr::get(Tracker::$types, $tracker->type, $tracker->type)) . "\n\n";
                 }
 
                 $message .= sprintf ('<h3>%s // %s</h3>', $tracker->title, $vendor);
-                $message_tg .= sprintf ('<em>%s // %s</em>', $tracker->title, $vendor) . "\n\n";
 
                 foreach ($data as $d) {
 
                     $message .= sprintf ('<p><a target="_blank" href="%s">%s</a>', $d->url, $d->title);
-                    $message_tg .= sprintf ('<a target="_blank" href="%s">%s</a>', $d->url, $d->title);
 
-                    if ( !empty ($d->itunes) AND $d->itunes != -1) {
-                        $message .= sprintf ('<a target="_blank" href="%s"><strong> - iTunes</strong></a>', $d->itunes);
-                        $message_tg .= "\n" . sprintf ('iTunes: <a target="_blank" href="%s">%s</a>', $d->itunes, $d->itunes);
-                    } else {
-                    	$message_tg .= "\n\n";
+                    if ( !empty ($d->itunes_url) AND $d->itunes_url != -1) {
+                        $message .= sprintf ('<a target="_blank" href="%s"><strong> - iTunes</strong></a>', $d->itunes_url);
                     }
 
                     $message .= '</p>';
 
                     $ids[] = $d->id;
                 }
-
-                $message_tg .="\n";
             }
         }
-
-        $message_tg = rtrim ($message_tg, "\n");
 
         if ( ! empty ($message)) {
             $mail = new PHPMailer;
@@ -266,47 +239,19 @@ class Tracker {
             if ( ! $mail->send()) {
                 $this->_error ($mail->ErrorInfo);
             } else {
-            	$email_sended = TRUE;
+            	$sended = TRUE;
             }
         }
 
-        if ( ! empty ($message_tg) AND ! empty ($telegram)) {
-            $url = sprintf ('https://api.telegram.org/bot%s/sendMessage', Arr::get ($telegram, 'token'));
-            $request = CurlClient::get($url, ['chat_id'=>Arr::get ($telegram, 'chat_id'), 'parse_mode'=>'HTML', 'text'=>$message_tg])
-                ->agent('chrome')
-                ->accept('json', 'gzip');
-
-            if ( ! empty (Tracker::$proxy) AND is_array (Tracker::$proxy)) {
-                $proxy_host               = Arr::get (Tracker::$proxy, 'host');
-                $proxy_params             = [];
-                $proxy_params['port']     = Arr::get (Tracker::$proxy, 'port', 1080);
-                $proxy_params['type']     = Arr::get (Tracker::$proxy, 'type', 'http');
-                $proxy_params['username'] = Arr::get (Tracker::$proxy, 'username');
-                $proxy_params['password'] = Arr::get (Tracker::$proxy, 'password');
-                $request->proxy($proxy_host, $proxy_params);
-            }
-
-            $response = $request->send();
-
-            if ($response !== 200) {
-            	$body = $request->get_body();
-            	$error_msg = sprintf ('%d: %s', Arr::get ($body, 'error_code', 0), Arr::get ($body, 'description', 'Unknown error'));
-            	$this->_error ($error_msg);
-            } else {
-            	$tg_sended = TRUE;
-            }
-        }
-
-        if ($ids AND $email_sended && $tg_sended) {
+        if ($ids AND $sended) {
             $this->_db->data->update()
                         ->data(['notify'=>1])
                         ->by('id', $ids)
                         ->run();
         }
 
-        return $message;
+        return $sended;
     }
-    */
 
 	public function register (array $data = [])
 	{
@@ -344,7 +289,7 @@ class Tracker {
 					$data['title'] = html_entity_decode ($data['title'], ENT_COMPAT | ENT_HTML401, 'UTF-8');
 
 					if ($this->_tracker AND $this->_tracker->type == 'music') {
-						$data['itunes'] = Tracker::get_itunes_url ($data['title']);
+						$data['itunes_url'] = $this->_get_itunes_url ($data['title']);
 						usleep(500);
 					}
 				}
@@ -365,7 +310,8 @@ class Tracker {
 		    ->select()
 		    ->leftJoin('tracker', 'tracker.id = data.tracker_id')
 			->where('tracker.type = :type', [':type' => 'music'])
-			->where('data.itunes IS NULL')
+            ->where('data.post_id = :post_id', [':post_id' => 5662534])
+			//->where('data.itunes_url IS NULL')
 			->run();
 
 		$total = $result->count();
@@ -373,10 +319,10 @@ class Tracker {
 		foreach ($result as $row) {
 			$num++;
 			echo "### {$num} / {$total} ###", PHP_EOL;
-			$url = Tracker::get_itunes_url ($row->title);
+			$url = $rt->_get_itunes_url ($row->title);
 
 			if ($url) {
-				$row->itunes = $url;
+				$row->itunes_url = $url;
 				$row->save();
 			}
 
@@ -411,7 +357,7 @@ class Tracker {
 		*/
 	}
 
-	public static function get_itunes_url ($text)
+	protected function _get_itunes_url ($text)
 	{
 		$clean_pat = '#(\s+)?[\(\[\,]{1}(\s+)?$#iu';
 		$descr_pat = '#\(.*(cd|disk|disc|remaster|demo).*\)#iu';
@@ -470,7 +416,7 @@ class Tracker {
 		*/
 
 		if ($artist) {
-			$urls = Tracker::_itunes_api_request ($artist, 'musicArtist');
+			$urls = $this->_itunes_api_request ($artist, 'musicArtist');
 			return !empty ($urls) ? $urls->artist_url : FALSE;
 			//$meta['url'] = $urls->artist_url;
 		}
@@ -478,16 +424,28 @@ class Tracker {
 		return FALSE;
 	}
 
-	protected function _request ()
+	protected function _request (array $options = [], &$status = NULL)
 	{
-		if ( ! $this->_tracker)
-			return FALSE;
+        $url    = Arr::get ($options, 'url');
+        $json   = Arr::get ($options, 'json');
+        $proxy  = Arr::get ($options, 'proxy', TRUE);
+        $params = Arr::get ($options, 'params', []);
 
-		$request = CurlClient::get($this->_tracker->feed)
-					->agent('chrome')
-					->accept('gzip');
+        if (empty($url) AND ! empty ($this->_tracker) AND ! empty ($this->_tracker->feed)) {
+            $url = $this->_tracker->feed;
+        }
 
-		if ( ! empty (Tracker::$proxy) AND is_array (Tracker::$proxy)) {
+        if (empty($url)) {
+            return FALSE;
+        }
+
+        $accept = $json ? 'json' : '*/*';
+
+		$request = CurlClient::get($url, $params)
+					->browser('chrome', 'mac')
+					->accept($accept, 'gzip');
+
+		if ($proxy AND ! empty (Tracker::$proxy) AND is_array (Tracker::$proxy)) {
 			$proxy_host               = Arr::get (Tracker::$proxy, 'host');
 			$proxy_params             = [];
 			$proxy_params['port']     = Arr::get (Tracker::$proxy, 'port', 1080);
@@ -498,15 +456,11 @@ class Tracker {
 		}
 
 		$response = $request->send();
-
-		if ($response === 200) {
-			return $request->get_body();
-		}
-
-		return FALSE;
+        $status = $response->get_status();
+        return $response->get_body();
 	}
 
-	protected static function _itunes_api_request ($text, $entity = 'album')
+	protected function _itunes_api_request ($text, $entity = 'album')
 	{
 		$ret = new \stdClass;
 		$ret->artist_url = $ret->album_url = NULL;
@@ -520,23 +474,20 @@ class Tracker {
 			'limit'    => 1,
 		];
 
-		$request = CurlClient::get(Tracker::ITUNES_API_ENDPOINT, $params)
-					->agent('chrome')
-					->accept('gzip', 'application/json');
+        $status = NULL;
+        $response = $this->_request (['url'=>Tracker::ITUNES_API_ENDPOINT, 'params'=>$params, 'json'=>TRUE, 'proxy'=>FALSE], $status);
 
-		$response = $request->send();
-
-		if ($response === 200) {
-			$body = $request->get_body();
-			$body = json_decode($body, TRUE);
+		if ($status === 200) {
+			$body = json_decode($response, TRUE);
 
 			if (json_last_error() === JSON_ERROR_NONE) {
 
 				$total = Arr::get ($body, 'resultCount', 0);
 				$results = Arr::get ($body, 'results', 0);
 
-				if ($total === 0)
+				if ($total === 0) {
 					return FALSE;
+                }
 
 				$results = array_shift($results);
 
@@ -594,7 +545,7 @@ class Tracker {
 		return $result;
 	}
 
-	protected function _get_data ($notify = -1, $field = NULL)
+	protected function _get_data ($notify = -1, $field = NULL, $limit = 0)
 	{
 		$result = $this->_db->data
 		    ->select();
@@ -604,6 +555,10 @@ class Tracker {
 		if ($notify >= 0) {
 			$result->where('notify = :n', [':n'=>$notify]);
 		}
+
+        if ($limit) {
+            $result->limit($limit);
+        }
 
 		$result = $result->orderBy('time ASC')->run();
 
