@@ -17,23 +17,24 @@ class Theme extends Tracker {
 	{
 		$themes = $this->_db->theme
 		    ->select()
+		    ->orderBy('id DESC')
 		    ->run();
 
 		foreach ($themes as $theme) {
-			$data = $this->_get_content($theme->url);
+			$magnet = $this->_get_magnet($theme->url);
 
-			if ( !empty ($data->url)) {
-				if (strcmp($theme->magnet, $data->url) !== 0 OR strcmp($theme->title, $data->title) !== 0) {
+			if ( ! empty ($magnet)) {
+				if (strcmp($theme->magnet, $magnet) !== 0) {
 
 					$update = [
-						'magnet' =>$data->url,
-						'title'  =>$data->title,
+						'magnet' =>$magnet,
+						//'title'  =>$data->title,
 						'update' =>time(),
 						'notify' => 0
 					];
 
 					$this->_update ($theme->id, $update);
-					$this->_add_torrent($data->url, $theme->name);
+					$this->_add_torrent($magnet, $theme->name);
 				}
 			}
 		}
@@ -63,7 +64,7 @@ class Theme extends Tracker {
 		}
 	}
 
-	private function _get_content ($url)
+	private function _get_magnet ($url)
 	{
 		$ret = new \stdClass;
 		$request = CurlClient::get($url)
@@ -71,30 +72,23 @@ class Theme extends Tracker {
 					->accept('*/*', 'gzip');
 
 		if (Tracker::$proxy) {
-			$request->proxy(Tracker::$proxy);
+			$proxy_host               = Arr::get (Tracker::$proxy, 'host');
+			$proxy_params             = [];
+			$proxy_params['port']     = Arr::get (Tracker::$proxy, 'port', 1080);
+			$proxy_params['type']     = Arr::get (Tracker::$proxy, 'type', 'http');
+			$proxy_params['username'] = Arr::get (Tracker::$proxy, 'username');
+			$proxy_params['password'] = Arr::get (Tracker::$proxy, 'password');
+			$request->proxy($proxy_host, $proxy_params);
 		}
 
 		$response = $request->send();
 
 		if ($response === 200) {
 			$body = $request->get_body();
-			$html = HtmlDomParser::str_get_html ($body);
-			$title = $html->find('title', 0);
 
-			if ($title) {
-				$ret->title = $title->plaintext;
+			if (preg_match ('#magnet\:(?<magnet>[\w\?\=\:]+)#i', $body, $parts)) {
+				return 'magnet:' . $parts['magnet'];
 			}
-
-			$urls = $html->find('a');
-
-			foreach ($urls as $u) {
-				if ( !empty ($u->href) AND preg_match('#magnet\:#', $u->href)) {
-					$ret->url = $u->href;
-					break;
-				}
-			}
-
-			return $ret;
 		}
 
 		return FALSE;
