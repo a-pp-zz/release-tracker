@@ -13,10 +13,12 @@ class Nnmclub extends Tracker implements TrackerInterface {
 
 	public function get ($pattern = NULL)
 	{
-		$body = $this->_request ();
+		$status = NULL;
+		$body = $this->_request ([], $status);
 
-		if ( ! $body)
+		if ( ! $body OR $status !== 200) {
 			return FALSE;
+		}
 
 		$header = Arr::path ($body, 'channel.title');
 		$update = Arr::path ($body, 'channel.lastBuildDate');
@@ -26,8 +28,9 @@ class Nnmclub extends Tracker implements TrackerInterface {
 			$dt = new \DateTime ($update, $this->_tz);
 			$this->_update = $dt->format ('Y-m-d H:i:s');
 
-			if ($this->_tracker->update == $this->_update)
+			if ($this->_tracker['last_update'] == $this->_update) {
 				return FALSE;
+			}
 		}
 
 		foreach ($items as $item) {
@@ -54,7 +57,7 @@ class Nnmclub extends Tracker implements TrackerInterface {
 			}
 
 			$this->_data[] = [
-				'tracker_id' => $this->_tracker->id,
+				'tracker_id' => $this->_tracker['id'],
 				'post_id'    => $post_id,
 				'time'       => date ('Y-m-d H:i:s'),
 				'title'      => $title,

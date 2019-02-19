@@ -2,7 +2,6 @@
 namespace AppZz\Http\RT\Vendors;
 use AppZz\Http\RT\Tracker;
 use AppZz\Http\RT\TrackerInterface;
-use AppZz\Http\RT\EntitiesDecode;
 use AppZz\Helpers\Arr;
 
 class Rutracker extends Tracker implements TrackerInterface {
@@ -14,10 +13,12 @@ class Rutracker extends Tracker implements TrackerInterface {
 
 	public function get ($pattern = NULL)
 	{
-		$body = $this->_request ();
+		$status = NULL;
+		$body = $this->_request ([], $status);
 
-		if ( ! $body)
+		if ( ! $body OR $status !== 200) {
 			return FALSE;
+		}
 
 		$header = Arr::get ($body, 'title');
 		$update = Arr::get ($body, 'updated');
@@ -27,8 +28,9 @@ class Rutracker extends Tracker implements TrackerInterface {
 			$dt = new \DateTime ($update, $this->_tz);
 			$this->_update = $dt->format ('Y-m-d H:i:s');
 
-			if ($this->_tracker->update == $this->_update)
+			if ($this->_tracker['last_update'] == $this->_update) {
 				return FALSE;
+			}
 		}
 
 		foreach ($items as $item) {
@@ -49,7 +51,7 @@ class Rutracker extends Tracker implements TrackerInterface {
 			}
 
 			$this->_data[] = [
-				'tracker_id' => $this->_tracker->id,
+				'tracker_id' => $this->_tracker['id'],
 				'post_id'    => $post_id,
 				'time'       => date ('Y-m-d H:i:s'),
 				'title'      => $title,

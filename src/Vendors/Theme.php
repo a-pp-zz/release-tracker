@@ -2,8 +2,9 @@
 namespace AppZz\Http\RT\Vendors;
 use AppZz\Http\RT\Tracker;
 use AppZz\Http\TransmissionRPC;
+use AppZz\Http\TransmissionRPC\Exception;
 use AppZz\Helpers\Arr;
-use Sunra\PhpSimple\HtmlDomParser;
+use AppZz\Helpers\HtmlDomParser;
 use AppZz\Http\CurlClient;
 
 class Theme extends Tracker {
@@ -13,32 +14,30 @@ class Theme extends Tracker {
 		parent::__construct ();
 	}
 
-	public function sync ()
-	{
-		$themes = $this->_db->theme
-		    ->select()
-		    ->orderBy('id DESC')
-		    ->run();
+    public function sync ()
+    {
+        $themes = $this->_db->from('theme')
+            ->where('status', 1)
+            ->fetchAll();
 
-		foreach ($themes as $theme) {
-			$magnet = $this->_get_magnet($theme->url);
+        foreach ($themes as $theme) {
+            $data = $this->_get_content($theme['url']);
 
-			if ( ! empty ($magnet)) {
-				if (strcmp($theme->magnet, $magnet) !== 0) {
+            if ( ! empty ($data->url)) {
+                if (strcmp($theme['magnet'], $data->url) !== 0 OR strcmp($theme['title'], $data->title) !== 0) {
 
-					$update = [
-						'magnet' =>$magnet,
-						//'title'  =>$data->title,
-						'update' =>time(),
-						'notify' => 0
-					];
+                    $update = [
+                        'magnet' =>$data->url,
+                        'title'  =>$data->title,
+                        'last_update' =>date ('Y-m-d H:i:s'),
+                    ];
 
-					$this->_update ($theme->id, $update);
-					$this->_add_torrent($magnet, $theme->name);
-				}
-			}
-		}
-	}
+                    $this->_update ($theme['id'], $update);
+                    $this->_add_torrent($data->url, $theme['name']);
+                }
+            }
+        }
+    }
 
 	private function _update ($id, array $data = [])
 	{
@@ -46,51 +45,41 @@ class Theme extends Tracker {
 			return FALSE;
 		}
 
-		return $this->_db->theme->update()
-					->data($data)
-					->where('id = :id', [':id' => $id])
+		return $this->_db->update('theme')
+					->set($data)
+					->where('id', $id)
 					->limit(1)
-					->run();
+					->execute();
 	}
 
-	private function _add_torrent ($url, $name)
-	{
-		try {
-			$tr = new TransmissionRPC (Tracker::$transmission);
-			$tr->auth(Arr::get(Tracker::$transmission, 'username'), Arr::get(Tracker::$transmission, 'password'));
-			$tr->add_file ($url, trim(Tracker::$tvshows_path . DIRECTORY_SEPARATOR . $name));
-		} catch (\Exception $e) {
+    private function _get_content ($url)
+    {
+        $ret = new \stdClass;
+        $status = NULL;
+        $response = $this->_request (['url'=>$url, 'proxy'=>TRUE, 'json'=>FALSE], $status);
 
-		}
-	}
+        if ($status === 200) {
+            $html = HtmlDomParser::str_get_html ($response);
+            $title = $html->find('title', 0);
 
-	private function _get_magnet ($url)
-	{
-		$ret = new \stdClass;
-		$request = CurlClient::get($url)
-					->agent('chrome')
-					->accept('*/*', 'gzip');
+            if ($title) {
+                $ret->title = $title->plaintext;
+                $encoding = mb_detect_encoding ($ret->title, ['utf-8', 'cp1251']);
+                $ret->title = mb_convert_encoding ($ret->title, 'utf-8', $encoding);
+            }
 
-		if (Tracker::$proxy) {
-			$proxy_host               = Arr::get (Tracker::$proxy, 'host');
-			$proxy_params             = [];
-			$proxy_params['port']     = Arr::get (Tracker::$proxy, 'port', 1080);
-			$proxy_params['type']     = Arr::get (Tracker::$proxy, 'type', 'http');
-			$proxy_params['username'] = Arr::get (Tracker::$proxy, 'username');
-			$proxy_params['password'] = Arr::get (Tracker::$proxy, 'password');
-			$request->proxy($proxy_host, $proxy_params);
-		}
+            $urls = $html->find('a');
 
-		$response = $request->send();
+            foreach ($urls as $u) {
+                if ( !empty ($u->href) AND preg_match('#magnet\:#', $u->href)) {
+                    $ret->url = $u->href;
+                    break;
+                }
+            }
 
-		if ($response === 200) {
-			$body = $request->get_body();
+            return $ret;
+        }
 
-			if (preg_match ('#magnet\:(?<magnet>[\w\?\=\:]+)#i', $body, $parts)) {
-				return 'magnet:' . $parts['magnet'];
-			}
-		}
-
-		return FALSE;
-	}
+        return FALSE;
+    }
 }
