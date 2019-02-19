@@ -21,7 +21,7 @@
         "appzz/arr": "1.*",
         "appzz/curl-client": "3.*",
         "appzz/transmission-rpc": "1.*",
-        "phpmailer/phpmailer": "^6.0.7",
+        "phpmailer/phpmailer": "~6.0",
         "appzz/html-dom-parser": "^1.8",
         "envms/fluentpdo": "2.*"
     },
