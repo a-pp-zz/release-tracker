@@ -86,10 +86,6 @@ class Soap4me extends Tracker implements TrackerInterface {
 	public function add_torrents ()
 	{
 		if ($this->_data) {
-			$transmission = DB::config ('transmission');
-			$tr = new TransmissionRPC ($transmission);
-			$tr->auth(Arr::get($transmission, 'username'), Arr::get($transmission, 'password'));
-
 			foreach ($this->_data as $data) {
 				$title_parts = explode ('/', $data['title']);
 				if ($title_parts) {
