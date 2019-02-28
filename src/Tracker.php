@@ -91,10 +91,10 @@ class Tracker extends DB {
         $exists = $this->_get_theme (Arr::get($data, 'url'));
 
         if ($exists) {
-            return FALSE;
+            return -1;
         }
 
-        return $this->_db
+        return (int) $this->_db
             ->insertInto ('theme')
             ->values ([
                 'name' => Arr::get($data, 'name'),
