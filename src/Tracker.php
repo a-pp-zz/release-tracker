@@ -61,7 +61,7 @@ class Tracker extends DB {
 			$vnd->get ($pattern);
 
 			if ($vendor == 'soap4me') {
-				//$vnd->add_torrents();
+				$vnd->add_torrents();
 			}
 
 			$vnd->save ();
