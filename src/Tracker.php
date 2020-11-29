@@ -205,7 +205,7 @@ class Tracker extends DB {
 		$year_pat = '#(?<title>.*)(?<year>\d{4}).*#iu';
 		$years_pat = '#(?<title>.*)(?<year>\d{4}.*\d{4})#iu';
 
-		$text = preg_replace ('#\[(Обновлено|WEB|CD|CDS)\]\s?#iu', '', $text);
+		$text = preg_replace ('#\[(Обновлено|WEB|CD|CDS|STREAM)\]\s?#iu', '', $text);
 		$text = html_entity_decode ($text, ENT_COMPAT | ENT_HTML401, 'UTF-8');
 
 		$p1 = preg_match ($years_pat, $text, $parts);
