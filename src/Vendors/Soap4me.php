@@ -75,24 +75,12 @@ class Soap4me extends Tracker implements TrackerInterface {
 				'time'       => date ('Y-m-d H:i:s', $time),
 				'title'      => $title,
 				'url'        => $link,
+				'torrent'    => 1
 			];
 		}
 
 		if ($times) {
 			$this->_update = date ('Y-m-d H:i:s', max ($times));
-		}
-	}
-
-	public function add_torrents ()
-	{
-		if ($this->_data) {
-			foreach ($this->_data as $data) {
-				$title_parts = explode ('/', $data['title']);
-				if ($title_parts) {
-					$title_parts = array_shift($title_parts);
-					$this->_add_torrent ($data['url'], $title_parts);
-				}
-			}
 		}
 	}
 
