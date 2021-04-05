@@ -59,14 +59,35 @@ class Tracker extends DB {
 			//$pattern = Arr::get(Tracker::$patterns, $tracker['type']);
 
 			$vnd->get ($pattern);
-
-			if ($vendor == 'soap4me') {
-				$vnd->add_torrents();
-			}
-
 			$vnd->save ();
 		}
 	}
+
+    public function download ($st = 1)
+    {
+        $result = $this->_db->from('data')->where('torrent', $st)->fetchAll();
+
+        foreach ($result as $data) {
+            $title_parts = explode ('/', $data['title']);
+            if ($title_parts) {
+                $title_parts = array_shift($title_parts);
+
+                try {
+                    $this->_add_torrent ($data['url'], $title_parts);
+                    $torrent = 2;
+                } catch (\Exception $e) {
+                    $torrent = 3;
+                    //echo $e->getMessage(), PHP_EOL;
+                }
+
+                $this->_db->update('data')
+                            ->set(['torrent'=>$torrent])
+                            ->where('post_id', $data['post_id'])
+                            ->limit(1)
+                            ->execute();
+            }
+        }
+    }
 
 	public function register_tracker (array $data = [])
 	{
@@ -205,7 +226,7 @@ class Tracker extends DB {
 		$year_pat = '#(?<title>.*)(?<year>\d{4}).*#iu';
 		$years_pat = '#(?<title>.*)(?<year>\d{4}.*\d{4})#iu';
 
-		$text = preg_replace ('#\[(Обновлено|WEB|CD|CDS)\]\s?#iu', '', $text);
+		$text = preg_replace ('#\[(Обновлено|WEB|CD|CDS|STREAM)\]\s?#iu', '', $text);
 		$text = html_entity_decode ($text, ENT_COMPAT | ENT_HTML401, 'UTF-8');
 
 		$p1 = preg_match ($years_pat, $text, $parts);
