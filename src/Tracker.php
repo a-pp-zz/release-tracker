@@ -265,10 +265,15 @@ class Tracker extends DB {
 
 	protected function _request (array $options = [], &$status = NULL)
 	{
-        $url    = Arr::get ($options, 'url');
-        $json   = Arr::get ($options, 'json');
+        $url        = Arr::get ($options, 'url');
+        $json       = Arr::get ($options, 'json');
         $use_proxy  = Arr::get ($options, 'proxy', TRUE);
-        $params = Arr::get ($options, 'params', []);
+        $params     = Arr::get ($options, 'params', []);
+        $method     = Arr::get ($options, 'method', 'GET');
+        $cookiefile = Arr::get ($options, 'cookiefile');
+        $ajax       = Arr::get ($options, 'ajax');
+        $referer    = Arr::get ($options, 'referer');
+        $accept     = Arr::get ($options, 'accept');
 
         if (empty($url) AND ! empty ($this->_tracker) AND ! empty ($this->_tracker['feed'])) {
             $url = $this->_tracker['feed'];
@@ -278,11 +283,30 @@ class Tracker extends DB {
             return FALSE;
         }
 
-        $accept = $json ? 'json' : '*/*';
+        if (empty ($accept)) {
+            $accept = $json ? 'json' : '*/*';
+        }
 
-		$request = CurlClient::get($url, $params)
+        $headers = $options = [];
+
+        if ( ! empty ($cookiefile)) {
+            $options = [
+                'CURLOPT_COOKIEFILE' => $cookiefile,
+                'CURLOPT_COOKIEJAR'  => $cookiefile,
+            ];
+        }
+
+		$request = CurlClient::request($url, $method, $params, $headers, $options)
 					->browser('chrome', 'mac')
 					->accept($accept, 'gzip');
+
+        if ($ajax) {
+            $request->ajax();
+        }
+
+        if ($referer) {
+            $request->referer($referer);
+        }
 
         $proxy = DB::config ('proxy', []);
 
