@@ -24,12 +24,14 @@ class Theme extends Tracker {
             $data = $this->_get_content($theme['url']);
 
             if ( ! empty ($data->url)) {
-                if (strcmp($theme['magnet'], $data->url) !== 0 OR strcmp($theme['title'], $data->title) !== 0) {
+                //if (strcmp($theme['magnet'], $data->url) !== 0 OR strcmp($theme['title'], $data->title) !== 0) {
+                if (strcmp($theme['hash'], $data->hash) !== 0) {
 
                     $update = [
-                        'magnet' =>$data->url,
-                        'title'  =>$data->title,
-                        'last_update' =>date ('Y-m-d H:i:s'),
+                        'magnet'      => $data->url,
+                        'title'       => $data->title,
+                        'last_update' => date ('Y-m-d H:i:s'),
+                        'hash'        => $data->hash
                     ];
 
                     $this->_update ($theme['id'], $update);
@@ -73,6 +75,11 @@ class Theme extends Tracker {
             foreach ($urls as $u) {
                 if ( !empty ($u->href) AND preg_match('#magnet\:#', $u->href)) {
                     $ret->url = $u->href;
+
+                    if (preg_match('#.*btih\:(\w{40}).*#iu', $ret->url, $pr)) {
+                        $ret->hash = strtolower($pr[1]);
+                    }
+
                     break;
                 }
             }
